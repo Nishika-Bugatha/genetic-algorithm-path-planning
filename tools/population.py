@@ -14,6 +14,7 @@ from config import Config
 import numpy as np
 import math as ma
 import random
+from tools.draw_plot import define_links_dynamic
 
 
 def population():
@@ -27,7 +28,8 @@ def population():
     """
 
     # np.set_printoptions(threshold=np.nan)
-    link = Config.define_links()
+    link = define_links_dynamic()
+
     link_fit = _link_distance(link)
     link_prob = _link_prob(link_fit)
     link_cum_prob = np.cumsum(link_prob, axis=1)
@@ -38,31 +40,20 @@ def population():
 
 def _link_distance(link):
     """
-    This function is responsible for calculating distance b/w links
-    
-    Parameters
-    ----------
-    link : [numpy.ndarray]
-        [links b/w path points of chromosomes]
-    
-    Returns
-    -------
-    [numpy.ndarray]
-        [numpy array of distance b/w links]
+    Calculate distances between linked path point pairs.
+    'link' is a list of [i, j] connections.
     """
+    link_dist = []
 
-    link_dist = np.zeros((np.shape(link)[0], np.shape(link)[1]-1))
+    for pair in link:
+        i, j = pair
+        pt1 = Config.path_points[i]
+        pt2 = Config.path_points[j]
+        dist = calculate_distance(pt1, pt2)
+        link_dist.append([dist])  # Keep it 2D to match later code
 
-    for i in range(np.shape(link)[0]):
+    return np.array(link_dist)
 
-        for j in range((np.shape(link)[1])-1):
-
-            if link[i][j] > -0.1 and link[i][j+1] > -0.1:
-
-                link_dist[i][j] = calculate_distance(
-                    pt_1=Config.path_points[int(link[i][j])], pt_2=Config.path_points[int(link[i][j+1])])
-
-    return link_dist
 
 
 def _link_prob(link_fit):
@@ -111,7 +102,7 @@ def _create_pop(link_cum_prob):
     pop[:, 0] = Config.start_index
     pop[:, Config.chr_len - 1] = Config.end_index
 
-    link = Config.define_links()
+    link = define_links_dynamic()
 
     for k in range(Config.pop_max):
         i = Config.start_index

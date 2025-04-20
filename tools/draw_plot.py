@@ -1,45 +1,53 @@
+# ✅ Modified draw_plot.py
+# Generates dynamic obstacles, checks line-obstacle intersections, and updates valid links accordingly.
+
 from config import Config
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import random
+from shapely.geometry import LineString, box
+
+# Store obstacle rectangles and fixed points globally
+obstacle_rects = []
+fixed_start = None
+fixed_goal = None
 
 
-def show_plot(best_chromosome, inf_time=False):
-    """
-    This function is responsible for displaying plot.
-    
-    Parameters
-    ----------
-    best_chromosome : [numpy.ndarray]
-        [numpy array of best chromosome in population of chromosomes]
-    """
-
+def show_plot(best_chromosome, inf_time=False, draw_obstacles=False):
     plt.figure(num=1)
     plt.clf()
     plt.axis([Config.plt_ax_x_min, Config.plt_ax_x_max, Config.plt_ax_y_min,
-        Config.plt_ax_y_max])
+              Config.plt_ax_y_max])
 
     _draw_path_points()
-    _draw_obstacles()
+    if draw_obstacles:
+        _draw_obstacles()
+    else:
+        # Redraw previously generated obstacles
+        for x, y, w, h in obstacle_data:
+            rect = patches.Rectangle((x, y), w, h, linewidth=1, edgecolor='black', facecolor='red')
+            plt.gca().add_patch(rect)
 
+    # draw path
     best_path_x = []
     best_path_y = []
 
-    plt.annotate('Start Point', xy=(Config.path_points[int(best_chromosome[0])][0] 
-        + Config.plt_tolerance, Config.path_points[int(best_chromosome[0])][1]))
-    plt.annotate('Goal Point', xy=(Config.path_points[int(best_chromosome[-1])][0]
-        + Config.plt_tolerance, Config.path_points[int(best_chromosome[-1])][1]))
-
-    plt.text(x=Config.plt_ax_x_min, y=Config.plt_ax_y_max + Config.plt_tolerance, 
-        s='Generation:(%s)'%(Config.generations))
-
     for element in best_chromosome:
-
         best_path_x.append(Config.path_points[int(element)][0])
         best_path_y.append(Config.path_points[int(element)][1])
 
     plt.plot(best_path_x, best_path_y, "g-")
+
+    # Use fixed start and goal for annotation
+    if fixed_start:
+        plt.annotate('Start', xy=(fixed_start[0] + 0.2, fixed_start[1] + 0.2), color='green', fontsize=9)
+    if fixed_goal:
+        plt.annotate('Goal', xy=(fixed_goal[0] + 0.2, fixed_goal[1] + 0.2), color='red', fontsize=9)
+
     plt.draw()
-    plt.savefig("./docs/images/"+str(Config.img_iter_no)+".png")
+    plt.savefig(f"./docs/images/{Config.img_iter_no}.png")
     Config.img_iter_no += 1
+
     if not inf_time:
         plt.pause(0.01)
     else:
@@ -47,10 +55,6 @@ def show_plot(best_chromosome, inf_time=False):
 
 
 def _draw_path_points():
-    """
-    This function is responsible for displaying path points on plot.
-    """
-
     node_x = []
     node_y = []
 
@@ -62,37 +66,51 @@ def _draw_path_points():
 
 
 def _draw_obstacles():
-    """
-    This function is responsible for displaying obstacles on plot.
-    """
+    global obstacle_rects, obstacle_data, fixed_start, fixed_goal
+    obstacle_rects = []
+    obstacle_data = []
 
-    obs_1_x = [2.5, 3.5, 3.5, 2.5, 2.5]
-    obs_1_y = [9, 9, 12, 12, 9]
-    plt.fill(obs_1_x, obs_1_y, "r")
+    map_width = 16
+    map_height = 16
+    num_obstacles = 6
+    obstacle_size_range = (1, 3)
+    fixed_start = (Config.path_points[0][0], Config.path_points[0][1])
+    fixed_goal = (Config.path_points[-1][0], Config.path_points[-1][1])
 
-    plt.legend(('Path points', 'Obstacles'), loc='upper right', fontsize='small',
-               numpoints=1, markerscale=0.5, labelspacing=1)
+    for _ in range(num_obstacles):
+        while True:
+            width = random.randint(*obstacle_size_range)
+            height = random.randint(*obstacle_size_range)
+            x = random.randint(0, map_width - width)
+            y = random.randint(0, map_height - height)
 
-    obs_2_x = [3, 4, 4, 3, 3]
-    obs_2_y = [6.5, 6.5, 4, 4, 6.5]
-    plt.fill(obs_2_x, obs_2_y, "r")
+            if (abs(x - fixed_start[0]) < 2 and abs(y - fixed_start[1]) < 2) or \
+               (abs(x - fixed_goal[0]) < 2 and abs(y - fixed_goal[1]) < 2):
+                continue
 
-    obs_3_x = [7, 9, 9, 7, 7]
-    obs_3_y = [12, 12, 13, 13, 12]
-    plt.fill(obs_3_x, obs_3_y, "r")
+            obstacle_data.append((x, y, width, height))
+            break
 
-    obs_4_x = [6.5, 8, 8, 6.5, 6.5]
-    obs_4_y = [6, 6, 9.5, 9.5, 6]
-    plt.fill(obs_4_x, obs_4_y, "r")
 
-    obs_5_x = [5.7, 8.7, 8.7, 5.7, 5.7]
-    obs_5_y = [2, 2, 3, 3, 2]
-    plt.fill(obs_5_x, obs_5_y, "r")
 
-    obs_6_x = [11, 12, 12, 11, 11]
-    obs_6_y = [8.5, 8.5, 12, 12, 8.5]
-    plt.fill(obs_6_x, obs_6_y, "r")
+def line_intersects_obstacles(p1, p2, obstacles):
+    line = LineString([p1, p2])
+    for x, y, w, h in obstacle_data:
+        box_obj = box(x, y, x + w, y + h)
+        if line.intersects(box_obj):
+            return True
+    return False
 
-    obs_7_x = [10, 11.5, 11.5, 10, 10]
-    obs_7_y = [3.5, 3.5, 5.5, 5.5, 3.5]
-    plt.fill(obs_7_x, obs_7_y, "r")
+
+
+def define_links_dynamic():
+    Config.links = []
+    num_points = len(Config.path_points)
+    for i in range(num_points):
+        for j in range(num_points):
+            if i != j:
+                p1 = Config.path_points[i]
+                p2 = Config.path_points[j]
+                if not line_intersects_obstacles(p1, p2, obstacle_rects):
+                    Config.links.append([i, j])
+    return Config.links

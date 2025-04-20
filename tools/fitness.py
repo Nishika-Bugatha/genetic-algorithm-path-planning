@@ -11,7 +11,7 @@ Email: yasim.ahmed63@yahoo.com
 
 from config import Config
 from tools.population import calculate_distance
-
+from tools.draw_plot import define_links_dynamic
 import numpy as np
 
 
@@ -135,32 +135,22 @@ def chr_fit_based_conn(chr_conn):
 
 def chr_conn(chr_pop):
     """
-    This function is responsible for finding number of connections b/w path points of
-    a individual chromosome.
-    
-    Parameters
-    ----------
-    chr_pop : [numpy.ndarray]
-        [Population of chromosomes whose number of connections are to be calculated]
-    
-    Returns
-    -------
-    [numpy.ndarray]
-        [numpy array of number of connection b/w path points of an individual chromosome]
+    Calculates number of valid connections in each chromosome based on dynamic links.
     """
+    define_links_dynamic()  # ensure links are up to date
+    link_set = set((a, b) for a, b in Config.links)  # for fast lookup
 
-    link = Config.define_links()
     chr_conn = np.zeros((Config.pop_max, 1))
 
     for i in range(Config.pop_max):
-        for j in range(Config.chr_len-1):
+        for j in range(Config.chr_len - 1):
             a = int(chr_pop[i][j])
-            b = int(chr_pop[i][j+1])
-            for k in range(np.shape(link)[1]):
-                if link[a, k] == b:
-                    chr_conn[i][0] += 1
+            b = int(chr_pop[i][j + 1])
+            if (a, b) in link_set:
+                chr_conn[i][0] += 1
 
     return chr_conn
+
 
 
 def chr_fit_based_dist(chr_pts_consec_dist):
