@@ -1,34 +1,13 @@
-#!/usr/bin/env python
-
-"""
-Script provide functionality related to initialization of population based
-on nodes(path points) and links b/w nodes(path points)
-
-Author: Yasim Ahmad(yaaximus)
-
-Email: yasim.ahmed63@yahoo.com
-"""
 
 from config import Config
-
 import numpy as np
 import math as ma
 import random
 from tools.draw_plot import define_links_dynamic
 
-
 def population():
-    """
-    This function encapsulates the capability to initialize population of chromosomes.
-    
-    Returns
-    -------
-    [numpy.ndarray]
-        [Population of chromosomes]
-    """
-
-    # np.set_printoptions(threshold=np.nan)
-    link = define_links_dynamic()
+    define_links_dynamic()
+    link = Config.links
 
     link_fit = _link_distance(link)
     link_prob = _link_prob(link_fit)
@@ -37,148 +16,52 @@ def population():
 
     return initial_pop
 
-
 def _link_distance(link):
-    """
-    Calculate distances between linked path point pairs.
-    'link' is a list of [i, j] connections.
-    """
     link_dist = []
-
     for pair in link:
         i, j = pair
         pt1 = Config.path_points[i]
         pt2 = Config.path_points[j]
         dist = calculate_distance(pt1, pt2)
-        link_dist.append([dist])  # Keep it 2D to match later code
-
+        link_dist.append([dist])
     return np.array(link_dist)
 
-
-
 def _link_prob(link_fit):
-    """
-    This function calculates the probability of links.
-    
-    Parameters
-    ----------
-    link_fit : [numpy.ndarray]
-        [numpy array of links connections fitness based on distance]
-    
-    Returns
-    -------
-    [numpy.ndarray]
-        [numpy array of links probability based on links fitness]
-    """
-
     link_prob = np.zeros((np.shape(link_fit)[0], np.shape(link_fit)[1]))
-
     for i in range(np.shape(link_fit)[0]):
-
         for j in range(np.shape(link_fit)[1]):
-
-            link_prob[i][j] = link_fit[i][j]/np.sum(link_fit[i], keepdims=True)
-
+            link_prob[i][j] = link_fit[i][j] / np.sum(link_fit[i], keepdims=True)
     return link_prob
 
-
 def _create_pop(link_cum_prob):
-    """
-    This function is responsible for creating chromosome population based on connection
-    b/w links.
-    
-    Parameters
-    ----------
-    link_cum_prob : [numpy.ndarray]
-        [numpy array of links cumulative probability based on links fitness]
-    
-    Returns
-    -------
-    [numpy.ndarray]
-        [numpy array of chromosome population based on connection b/w links]
-    """
-
     pop = np.zeros((Config.pop_max, Config.chr_len))
     pop[:, 0] = Config.start_index
     pop[:, Config.chr_len - 1] = Config.end_index
 
-    link = define_links_dynamic()
+    valid_links = {i: [] for i in range(Config.npts)}
+    for i, j in Config.links:
+        valid_links[i].append(j)
 
     for k in range(Config.pop_max):
-        i = Config.start_index
-        j = Config.start_index + 1
-        while j < Config.chr_len:
-            i = int(i)
-            if j > 0 and j < (Config.chr_len - 1):
-                random_val = random.random()
-                if random_val < link_cum_prob[i][0]:
-                    pop[k][j] = link[i][1]
-                    i = link[i][1]
-                    if _both_equ(i, Config.end_index):
-                        while j < (Config.chr_len - 1):
-                            pop[k][j+1] = Config.end_index
-                            j += 1
-                elif random_val < link_cum_prob[i][1]:
-                    pop[k][j] = link[i][2]
-                    i = link[i][2]
-                    if _both_equ(i, Config.end_index):
-                        while j < (Config.chr_len - 1):
-                            pop[k][j+1] = Config.end_index
-                            j += 1
-                elif random_val < link_cum_prob[i][2]:
-                    pop[k][j] = link[i][3]
-                    i = link[i][3]
-                    if _both_equ(i, Config.end_index):
-                        while j < (Config.chr_len - 1):
-                            pop[k][j+1] = Config.end_index
-                            j += 1
-                elif random_val < link_cum_prob[i][3]:
-                    pop[k][j] = link[i][4]
-                    i = link[i][4]
-                    if _both_equ(i, Config.end_index):
-                        while j < (Config.chr_len - 1):
-                            pop[k][j+1] = Config.end_index
-                            j += 1
-            j += 1
+        current = Config.start_index
+        path = [current]
+
+        while len(path) < Config.chr_len - 1:
+            neighbors = valid_links.get(current, [])
+            if not neighbors:
+                break
+            next_node = random.choice(neighbors)
+            path.append(next_node)
+            current = next_node
+            if current == Config.end_index:
+                break
+
+        while len(path) < Config.chr_len:
+            path.append(Config.end_index)
+
+        pop[k] = path[:Config.chr_len]
 
     return pop
 
-
-def _both_equ(element_1, element_2):
-    """
-    This function is responsible for finding if both elements are equal or not.
-    
-    Parameters
-    ----------
-    element_1 : [Int]
-        [First element for comparison]
-    element_2 : [Int]
-        [Second element for comparison]
-    
-    Returns
-    -------
-    [Bool]
-        [True or False based on wether both elements were equal or not]
-    """
-
-    return True if int(element_1) == int(element_2) else False
-
-
 def calculate_distance(pt_1, pt_2):
-    """
-    This function encapsulates the capability of calculating distance b/w two points.
-    
-    Parameters
-    ----------
-    pt_1 : [Float]
-        [point 1 for calculating distance]
-    pt_2 : [Float]
-        [point 2 for calculating distance]
-    
-    Returns
-    -------
-    [float]
-        [Distance b/w two points]
-    """
-
-    return ma.sqrt(ma.pow((pt_1[0]-pt_2[0]), 2)+ma.pow((pt_1[1]-pt_2[1]), 2))
+    return ma.sqrt(ma.pow((pt_1[0] - pt_2[0]), 2) + ma.pow((pt_1[1] - pt_2[1]), 2))

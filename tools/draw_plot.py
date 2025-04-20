@@ -1,4 +1,4 @@
-# ✅ Modified draw_plot.py
+
 # Generates dynamic obstacles, checks line-obstacle intersections, and updates valid links accordingly.
 
 from config import Config
@@ -111,6 +111,6 @@ def define_links_dynamic():
             if i != j:
                 p1 = Config.path_points[i]
                 p2 = Config.path_points[j]
-                if not line_intersects_obstacles(p1, p2, obstacle_rects):
+                if not line_intersects_obstacles(p1, p2, obstacle_data):
                     Config.links.append([i, j])
     return Config.links
